@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Camera } from 'expo-camera';
-import { useRef } from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer } from '@react-navigation/native';
 
-export default function Home() {
+const Home = ({navigation}) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -25,7 +26,7 @@ export default function Home() {
     );
   };
 
-  const takePicture = async () => {
+  const takePicture = async (navigation) => {
     if (cameraRef.current && isCameraReady) {
       try {
         const { uri } = await cameraRef.current.takePictureAsync();
@@ -33,6 +34,8 @@ export default function Home() {
 
         // Set the captured image URI to the state
         setImageUri(uri);
+        // Navigate to new screen
+        navigation.navigate('Picture', { imageUri: uri });
       } catch (error) {
         console.error('Error taking picture:', error);
       }
@@ -57,45 +60,66 @@ export default function Home() {
           >
             <View
               style={{
-                flex: 1,
                 backgroundColor: 'transparent',
                 flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 100,
+                marginTop: 600,
               }}
             >
               <TouchableOpacity
                 style={{
-                  flex: 0.1,
-                  alignSelf: 'flex-end',
-                  alignItems: 'center',
+                  margin: 0
                 }}
                 onPress={flipCamera}
               >
-                <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}>
+                <Text style={{ fontSize: 18, color: 'white' }}>
                   Flip
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
-                  flex: 0.1,
-                  alignSelf: 'flex-end',
-                  alignItems: 'center',
+                  margin: 0,
                 }}
-                onPress={takePicture}
+                onPress={() => takePicture(navigation)}
               >
-                <Text style={{ fontSize: 18, marginBottom: 10, color: 'white' }}>
-                  Take Picture
+                <Text style={{ fontSize: 18, color: 'white' }}>
+                  Capture
                 </Text>
               </TouchableOpacity>
             </View>
           </Camera>
-          {imageUri && (
+          {/* {imageUri && (
             <Image
               source={{ uri: imageUri }}
               style={{ width: 200, height: 200, alignSelf: 'center', marginTop: 20 }}
             />
-          )}
+          )} */}
         </View>
       )}
     </View>
+  );
+}
+
+export default function App() {
+  const Stack = createStackNavigator();
+
+  const PictureScreen = ({ route }) => {
+    const { imageUri } = route.params;
+  
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Image source={{ uri: imageUri }} style={{ width: 390, height: 755 }} />
+      </View>
+    );
+  };
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="Picture" component={PictureScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
