@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, TouchableWithoutFeedback } from 'react-native';
 import { Camera } from 'expo-camera';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
+import { manipulateAsync, FlipType, SaveFormat } from 'expo-image-manipulator';
 
-const Home = ({navigation}) => {
+const Home = ({ navigation }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -29,13 +30,13 @@ const Home = ({navigation}) => {
   const takePicture = async (navigation) => {
     if (cameraRef.current && isCameraReady) {
       try {
-        const { uri } = await cameraRef.current.takePictureAsync();
+        const { uri, width, height } = await cameraRef.current.takePictureAsync();
         console.log('Picture taken:', uri);
 
         // Set the captured image URI to the state
         setImageUri(uri);
         // Navigate to new screen
-        navigation.navigate('Picture', { imageUri: uri });
+        navigation.navigate('Picture', { imageUri: uri, width, height });
       } catch (error) {
         console.error('Error taking picture:', error);
       }
@@ -105,11 +106,32 @@ export default function App() {
   const Stack = createStackNavigator();
 
   const PictureScreen = ({ route }) => {
-    const { imageUri } = route.params;
-  
+    const { imageUri, width, height } = route.params;
+    const [pre, setPre] = useState(null);
+
+
+    const _cropImage = async (x, y) => {
+      const ratioX = width / 300;
+      const ratioY = height / 300;
+      const manipResult = await manipulateAsync(
+        imageUri,
+        [{ crop: { height: width * 0.2, width: height * 0.2, originX: x * ratioX, originY: y * ratioY } }],
+        { compress: 1, format: SaveFormat.PNG, base64: true }
+      );
+      console.log(manipResult.base64);
+      setPre(manipResult);
+    }
+
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Image source={{ uri: imageUri }} style={{ width: 390, height: 755 }} />
+        <TouchableWithoutFeedback onPress={(e) => {
+          console.log(e.nativeEvent.locationX, e.nativeEvent.locationY, width, height);
+          _cropImage(e.nativeEvent.locationX, e.nativeEvent.locationY);
+        }}>
+
+          <Image source={{ uri: imageUri }} style={{ width: 300, height: 300, resizeMode: "contain" }} />
+        </TouchableWithoutFeedback>
+        {pre && <Image source={{ uri: pre.localUri || pre.uri }} style={{ width: 300, height: 300, resizeMode: "contain" }} />}
       </View>
     );
   };
